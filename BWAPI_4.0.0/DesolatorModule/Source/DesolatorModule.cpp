@@ -7,8 +7,7 @@ using namespace Filter;
 void DesolatorModule::onStart()
 {
   // Hello World!
-  Broodwar->sendText("Hello world!");
-  this->us = Broodwar->self();
+  Broodwar->sendText("Desolator Module activated!");
 
   // Print the map name.
   // BWAPI returns std::string when retrieving a string, don't forget to add .c_str() when printing!
@@ -47,8 +46,25 @@ void DesolatorModule::onStart()
     // If you wish to deal with multiple enemies then you must use enemies().
     if ( Broodwar->enemy() ) // First make sure there is an enemy
       Broodwar << "The matchup is " << Broodwar->self()->getRace() << " vs " << Broodwar->enemy()->getRace() << std::endl;
-  }
 
+    this->us = Broodwar->self();
+    BWAPI::Unitset myUnits = this->us->getUnits();
+
+    // Initialize state and action
+    for(BWAPI::Unitset::iterator u = myUnits.begin(); u != myUnits.end(); u++)
+    {
+      Action action = Init;
+      State state = State();
+      state.health = u->getHitPoints() + u->getShields();
+      state.underAttack = u->isUnderAttack();
+      state.distanceToClosestEnemy = this->findClosestEnemy(*u);
+      
+      this->actions.push_back(action);
+      this->states.push_back(state);
+    }
+
+    this->observations = std::vector<Observation>(myUnits.size());
+  }
 }
 
 void DesolatorModule::onEnd(bool isWinner)
@@ -77,14 +93,42 @@ void DesolatorModule::onFrame()
   if ( Broodwar->getFrameCount() % Broodwar->getLatencyFrames() != 0 )
     return;
 
-  // Iterate through all the units that we own
-  Unitset myUnits = Broodwar->self()->getUnits();
+  // Check if enemies are seen.
+  BWAPI::Unitset enemies = BWAPI::Unitset();
+  this->findEnemies(&enemies);
+
+  // Update observations and state
+  Unitset myUnits = this->us->getUnits();
+  int i = 0;
+  for(Unitset::iterator u = myUnits.begin(); u != myUnits.end(); ++u)
+  {
+    // Update observation
+    this->observations[i] = Observation();
+    this->observations[i].previousAction = this->actions[i];
+    this->observations[i].previousState = this->states[i];
+
+    // Observe new state
+    State state = State();
+    state.health = u->getHitPoints() + u->getShields();
+    state.underAttack = u->isUnderAttack();
+    state.distanceToClosestEnemy = this->findClosestEnemy(*u);
+    this->states[i] = state;
+    Broodwar->printf("State = {Health: %d, Under attack: %d, Closest enemy: %f}",
+      state.health,
+      state.underAttack,
+      state.distanceToClosestEnemy);
+  }
+
+
   for ( Unitset::iterator u = myUnits.begin(); u != myUnits.end(); ++u )
   {
     // Ignore the unit if it no longer exists
     // Make sure to include this block when handling any Unit pointer!
     if ( !u->exists() )
       continue;
+
+
+
 
     // Ignore the unit if it has one of the following status ailments
     if ( u->isLockedDown() || u->isMaelstrommed() || u->isStasised() )
@@ -97,9 +141,6 @@ void DesolatorModule::onFrame()
     // Ignore the unit if it is incomplete or busy constructing
     if ( !u->isCompleted() || u->isConstructing() )
       continue;
-
-    bool spotted = false;
-    std::vector<BWAPI::Unit> enemies;
 
     if ( !u->isIdle() )
       continue;
@@ -210,10 +251,9 @@ void DesolatorModule::explore(BWAPI::Unit *explorer)
   Broodwar->printf("Exploring: (%d, %d) ", x, y);
 }
 
-void DesolatorModule::findEnemies(std::vector<BWAPI::Unit> *enemies)
+void DesolatorModule::findEnemies(BWAPI::Unitset *enemies)
 {
   /* Finds all visible enemies */
-  // TODO: Use unitset instead of std::vector that will fix my problem =)
   BWAPI::Playerset players = Broodwar->getPlayers();
 
   for(BWAPI::Playerset::iterator player = players.begin(); player != players.end(); player++)
@@ -221,23 +261,26 @@ void DesolatorModule::findEnemies(std::vector<BWAPI::Unit> *enemies)
     if(player->isEnemy(this->us))
     {
       BWAPI::Unitset units = player->getUnits();
-      for(BWAPI::Unitset::iterator enemyUnit = units.begin(); enemyUnit != units.end(); enemyUnit++)
-      {
-        bool same = false;
-        for(std::vector<BWAPI::Unit>::iterator unit = enemies->begin(); unit != enemies->end(); unit++)
-        {
-          if(enemyUnit->getPosition() == unit->getPosition())
-          {
-            same = true;
-            break;
-          }
-        }
-        BWAPI::Unit *test = enemyUnit;
-        if(!same)
-          enemies->push_back(*enemyUnit);
-      }
+      enemies->insert(units);
     }
   }
+}
+
+double DesolatorModule::findClosestEnemy(BWAPI::Unit *unit)
+{
+  BWAPI::Unitset enemies = BWAPI::Unitset();
+  this->findEnemies(&enemies);
+  if(enemies.empty())
+    return -1;
+
+  double shortestDistance = -1;
+  for(BWAPI::Unitset::iterator eUnit = enemies.begin(); eUnit != enemies.end(); eUnit++)
+  {    
+    double distance = unit->getDistance(*eUnit);
+    if(shortestDistance == -1 || distance < shortestDistance)
+      shortestDistance = distance;
+  }
+  return shortestDistance;
 }
 
 void DesolatorModule::onSendText(std::string text)
