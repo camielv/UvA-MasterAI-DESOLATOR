@@ -1,5 +1,6 @@
 #pragma once
 #include <BWAPI.h>
+#include <map>
 
 enum Action
 {
@@ -50,10 +51,13 @@ public:
   // Everything below this line is safe to modify.
 private:
   BWAPI::Player *us;
-  std::vector<Observation> observations;
-  std::vector<State> states;
-  std::vector<Action> actions;
-  void explore(BWAPI::Unit *explorer);
+  std::map<int, Observation> observations;
+  std::map<int, State> states;
+  std::map<int, Action> actions;
+  void explore(BWAPI::Unit *unit);
+  void flee(BWAPI::Unit *unit);
   void findEnemies(BWAPI::Unitset *enemies);
-  double findClosestEnemy(BWAPI::Unit *unit);
+  void evaluateText(std::string text);
+  BWAPI::Unit * findClosestEnemy(BWAPI::Unit *unit);
+  bool feedback;
 };
