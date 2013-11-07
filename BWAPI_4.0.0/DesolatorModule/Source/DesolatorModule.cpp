@@ -188,7 +188,7 @@ void DesolatorModule::onFrame() {
                     // This check is to avoid breaking Starcraft when we spam attack command
                     else if ( u->getOrder() != Orders::AttackUnit || unitStates[u->getID()].lastTarget != target.getUnit() ) {
                         u->attack(target.getUnit());
-						u->stop();
+						
                         unitStates[u->getID()].isStartingAttack = true;
                         unitStates[u->getID()].lastTarget = target.getUnit();
                     }
