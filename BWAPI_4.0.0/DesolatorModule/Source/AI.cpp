@@ -22,6 +22,7 @@ BWAPI::PositionOrUnit AI::attack(BWAPI::Unit unit, const BWAPI::Unitset & allies
         // No enemy in range move to closest ally that is targeted
         if ( GS.nearestAttackedAlly != nullptr ) {
             // If we have a closest ally that is targeted move towards it.
+			if ( ! unit->getID() )
             Broodwar->printf("Attack method for unit %d: ATTACK TO NEAREST FRIEND", unit->getID());
 
             auto & attacker = unitStates[GS.nearestAttackedAlly->getID()].nearestAttacker;
@@ -31,11 +32,13 @@ BWAPI::PositionOrUnit AI::attack(BWAPI::Unit unit, const BWAPI::Unitset & allies
         else {
             // If our allieds died or are not targeted kill closest enemy.
             if ( GS.nearestEnemy != nullptr ) {
+				if ( ! unit->getID() )
                 Broodwar->printf("Attack method for unit %d: MOVE TO NEAREST ENEMY", unit->getID());
                 return GS.nearestEnemy;
             }
             // Nothing to do...
             else {
+				if ( ! unit->getID() )
                 log_("ERROR: Called attack with no enemies in sight");
                 return unit->getPosition();
             }
@@ -51,10 +54,12 @@ BWAPI::PositionOrUnit AI::attack(BWAPI::Unit unit, const BWAPI::Unitset & allies
                 weakestEnemy = *it;
      
         if ( weakestEnemy != nullptr ) {
+			if ( ! unit->getID() )
             Broodwar->printf("Attack method for unit %d: ATTACK WEAKEST ENEMY", unit->getID());
             return weakestEnemy;
         }
         else {
+			if ( ! unit->getID() )
             Broodwar->printf("Attack method for unit %d: ERROR NO ENEMY IN RANGE", unit->getID());
             log_("ERROR: No enemy in range with canTarget true");
             return GS.nearestEnemy;
@@ -64,6 +69,8 @@ BWAPI::PositionOrUnit AI::attack(BWAPI::Unit unit, const BWAPI::Unitset & allies
 
 BWAPI::Position AI::flee(BWAPI::Unit unit, const BWAPI::Unitset & friends, const BWAPI::Unitset & enemies, DesolatorModule::UnitStates & unitStates)
 {
+	if ( ! unit->getID() )
+            Broodwar->printf("Unit %d is fleeing", unit->getID());
     auto & GS = unitStates[unit->getID()];
 
     double enemyForce = 5000.0;

@@ -137,9 +137,15 @@ void DesolatorModule::onFrame() {
                 GS.notMovingTurns = 0;
             }
 
+			if ( !u->getID() ) {
+				Broodwar->drawTextScreen(30,30 , "Unit 0 is idle: %d", u->isIdle());
+				Broodwar->drawTextScreen(30,60 , "Unit 0 is attacking: %d", u->isAttacking());
+				Broodwar->drawTextScreen(30,90 , "Unit 0 actual action is attacking: %d", GS.actualAction == ActualAction::Shoot);
+			}
+
             // If our personal tick ended
             // FIXME: Sometimes it does not move..
-            if ( u->isIdle() || moved || 
+			if ( u->isIdle() || moved || ( u->isAttacking() && GS.actualAction == ActualAction::Shoot ) ||
                ( GS.actualAction == ActualAction::Shoot && ! GS.isStartingAttack &&  ! u->isAttackFrame() ) ) {
 
                 updateUnitState(*u, myUnits, enemyUnits, true);
@@ -182,7 +188,7 @@ void DesolatorModule::onFrame() {
                     // This check is to avoid breaking Starcraft when we spam attack command
                     else if ( u->getOrder() != Orders::AttackUnit || unitStates[u->getID()].lastTarget != target.getUnit() ) {
                         u->attack(target.getUnit());
-
+						u->stop();
                         unitStates[u->getID()].isStartingAttack = true;
                         unitStates[u->getID()].lastTarget = target.getUnit();
                     }
